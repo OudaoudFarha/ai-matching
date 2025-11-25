@@ -18,9 +18,17 @@ public class Job {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String title;
-    @Lob private String description;
-    @Lob private String embeddingJson;
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    @Column(columnDefinition = "TEXT")
+    private String embeddingJson;
+    private String recruiterEmail;
+
+    @Builder.Default
     private Instant createdAt = Instant.now();
+
+
     // getters/setters
 }
 

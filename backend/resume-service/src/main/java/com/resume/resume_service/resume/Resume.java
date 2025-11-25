@@ -23,6 +23,8 @@ public class Resume {
     private String text;             // texte extrait
     @Lob
     private String embeddingJson;    // JSON de float[]
+    @Builder.Default
     private Instant createdAt = Instant.now();
+
 
 }
