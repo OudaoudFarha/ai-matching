@@ -6,11 +6,16 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import CandidateOffersPage from "./pages/CandidateOffersPage";
 import CandidateUploadPage from "./pages/CandidateUploadPage";
+
+import CandidateMatchingPage from "./pages/CandidateMatchingPage";
+
 import CandidateLayout from "./layouts/CandidateLayout";
 import RecruiterLayout from "./layouts/RecruiterLayout";
 import RecruiterJobsPage from "./pages/RecruiterJobsPage";
+import RecruiterCvScreeningPage from "./pages/RecruiterCvScreeningPage";
 
 function ProtectedRoute({ children }: { children: JSX.Element }) {
+
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
   return children;
@@ -49,17 +54,40 @@ export default function App() {
             }
           />
 
-          {/* Recruteur - mes offres */}
+  {/* Candidat - matching */}
           <Route
-            path="/recruiter/jobs"
+            path="/candidate/matching"
             element={
               <ProtectedRoute>
-                <RecruiterLayout>
-                  <RecruiterJobsPage />
-                </RecruiterLayout>
+                <CandidateLayout>
+                  <CandidateMatchingPage />
+                </CandidateLayout>
               </ProtectedRoute>
             }
           />
+
+          {/* Recruteur - mes offres */}
+   <Route
+  path="/recruiter/jobs"
+  element={
+    <ProtectedRoute allowedRoles={["RECRUITER"]}>
+      <RecruiterLayout>
+        <RecruiterJobsPage />
+      </RecruiterLayout>
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/recruiter/jobs/:jobId/screening"
+  element={
+    <ProtectedRoute allowedRoles={["RECRUITER"]}>
+      <RecruiterLayout>
+        <RecruiterCvScreeningPage />
+      </RecruiterLayout>
+    </ProtectedRoute>
+  }
+/>
 
           {/* Route par défaut → login */}
           <Route path="*" element={<Navigate to="/login" replace />} />

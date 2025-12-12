@@ -15,10 +15,17 @@ export function ProtectedRoute({
   allowedRoles?: string[];
 }) {
   const { user } = useAuth();
-  if (!user) return <Navigate to="/login" replace />;
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    // accès refusé → rediriger vers sa home
+    // ❌ PAS login
+    // ✅ page autorisée par défaut
     return <Navigate to="/" replace />;
   }
+
   return <>{children}</>;
 }
+

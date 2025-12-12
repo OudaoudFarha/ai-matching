@@ -1,5 +1,6 @@
 package com.resume.resume_service.Job;
 
+import com.resume.resume_service.resume.Resume;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -13,22 +14,19 @@ import java.time.Instant;
 @Builder(toBuilder = true)
 @ToString
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
-public class Job {
+public class JobMatch {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String title;
+    @ManyToOne(optional = false)
+    private Job job;
 
-    // on utilise TEXT pour éviter les LOB PostgreSQL
-    @Column(columnDefinition = "TEXT")
-    private String description;
+    @ManyToOne(optional = false)
+    private Resume resume;
 
-    @Column(columnDefinition = "TEXT")
-    private String embeddingJson;
-
-    private String recruiterEmail;
+    private double score;
 
     @Builder.Default
     private Instant createdAt = Instant.now();

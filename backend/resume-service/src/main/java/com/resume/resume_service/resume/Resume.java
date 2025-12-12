@@ -1,6 +1,5 @@
 package com.resume.resume_service.resume;
 
-// src/main/java/.../resume/Resume.java
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -15,16 +14,25 @@ import java.time.Instant;
 @ToString
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Resume {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    private String candidateEmail;
+
+    private String minioKey;
+
+    @Column(columnDefinition = "TEXT")
+    private String competences;
+
+    private Integer experienceYears;
+
+    @Column(columnDefinition = "TEXT")
+    private String embeddingJson;
+
     private String filename;
-    private String objectName;
-    @Lob
-    private String text;             // texte extrait
-    @Lob
-    private String embeddingJson;    // JSON de float[]
+
     @Builder.Default
     private Instant createdAt = Instant.now();
-
-
 }

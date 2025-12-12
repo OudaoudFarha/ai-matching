@@ -49,6 +49,20 @@ export default function CandidateLayout({ children }: Props) {
             Uploader mon CV
           </Link>
 
+<Link
+  to="/candidate/matching"
+  style={{
+    padding: "8px 14px",
+    borderRadius: 999,
+    border: "1px solid #22c55e",
+    color: "#fff",
+    textDecoration: "none",
+    fontSize: 14,
+  }}
+>
+  Matching IA
+</Link>
+
           <button
             onClick={logout}
             style={{

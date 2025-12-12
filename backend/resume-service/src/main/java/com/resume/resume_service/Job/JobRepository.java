@@ -1,10 +1,9 @@
 package com.resume.resume_service.Job;
 
+import org.springframework.data.jpa.repository.JpaRepository;
+
 import java.util.List;
 
-// JobRepository
-public interface JobRepository extends org.springframework.data.jpa.repository.JpaRepository<Job, Long> {
+public interface JobRepository extends JpaRepository<Job, Long> {
     List<Job> findByRecruiterEmail(String recruiterEmail);
-
 }
-

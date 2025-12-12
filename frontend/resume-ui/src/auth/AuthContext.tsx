@@ -1,5 +1,5 @@
 // src/auth/AuthContext.tsx
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useState } from "react";
 import type { ReactNode } from "react";
 import api from "../api";
 
@@ -19,39 +19,30 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function loadUserFromStorage(): AuthUser | null {
+  const token = localStorage.getItem("token");
+  const email = localStorage.getItem("email");
+  const role = localStorage.getItem("role") as Role | null;
+
+  if (token && email && role) return { token, email, role };
+  return null;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
+  // ✅ lecture synchro dès le départ
+  const [user, setUser] = useState<AuthUser | null>(() => loadUserFromStorage());
 
-  // 🔁 Charger l'utilisateur depuis localStorage au démarrage
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    const email = localStorage.getItem("email");
-    const role = localStorage.getItem("role") as Role | null;
-
-    if (token && email && role) {
-      setUser({ token, email, role });
-    }
-  }, []);
-
-  // 🔐 Login
   const login = async (email: string, password: string) => {
     const res = await api.post("/api/auth/login", { email, password });
 
-    // d'après ton screenshot :
-    // {
-    //   "token": "...",
-    //   "email": "farha2@gmail.com",
-    //   "role": "CANDIDATE"
-    // }
     const token: string = res.data.token;
-    const role: Role = res.data.role;
+   const role = res.data.role.replace("ROLE_", "") as Role;
 
-    // stocker pour les prochains appels
     localStorage.setItem("token", token);
-    localStorage.setItem("email", email);
+    localStorage.setItem("email", res.data.email ?? email);
     localStorage.setItem("role", role);
 
-    setUser({ email, role, token });
+    setUser({ email: res.data.email ?? email, role, token });
   };
 
   const logout = () => {
@@ -70,8 +61,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) {
-    throw new Error("useAuth must be used inside AuthProvider");
-  }
+  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
   return ctx;
 }

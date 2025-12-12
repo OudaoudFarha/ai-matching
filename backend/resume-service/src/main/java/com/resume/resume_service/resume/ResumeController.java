@@ -1,68 +1,148 @@
 package com.resume.resume_service.resume;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.resume.resume_service.Job.Job;
+import com.resume.resume_service.Job.JobMatch;
+import com.resume.resume_service.Job.JobMatchRepository;
+import com.resume.resume_service.Job.JobRepository;
 import com.resume.resume_service.nlp.NlpClient;
-import com.resume.resume_service.parser.PdfParserService;
-import io.minio.MinioClient;
-import io.minio.PutObjectArgs;
+import com.resume.resume_service.nlp.dto.CandidateResponseDto;
+import com.resume.resume_service.nlp.dto.RankedJobDto;
+import com.resume.resume_service.nlp.dto.ResumeSummaryDto;
+import com.resume.resume_service.Services.MinioService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.InputStream;
-import java.util.UUID;
+import java.util.List;
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/resumes")
 @RequiredArgsConstructor
 public class ResumeController {
 
     private final ResumeRepository resumeRepository;
-    private final PdfParserService pdfParserService;
+    private final JobRepository jobRepository;
+    private final JobMatchRepository jobMatchRepository;
     private final NlpClient nlpClient;
-    private final MinioClient minioClient;
+    private final MinioService minioService;
+    private final ResumeService resumeService;
+    private final ObjectMapper objectMapper;
 
-    @Value("${app.minio.bucket}")
-    private String bucket;
-
-
+    // ✅ 1) récupérer le CV actuel (dernier CV)
     @PreAuthorize("hasRole('CANDIDATE')")
-    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public Resume upload(@RequestParam("file") MultipartFile file) throws Exception {
-        String objectName = UUID.randomUUID() + "_" + file.getOriginalFilename();
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        System.out.println("🔑 Authentification: " + auth);
-        System.out.println("🔑 Authorities: " + auth.getAuthorities());
-        try (InputStream is = file.getInputStream()) {
-            minioClient.putObject(
-                    PutObjectArgs.builder()
-                            .bucket(bucket)
-                            .object(objectName)
-                            .contentType(file.getContentType())
-                            .stream(is, file.getSize(), -1)
-                            .build()
-            );
-        }
-
-        String text;
-        try (InputStream is = file.getInputStream()) {
-            text = pdfParserService.extractText(is);
-        }
-
-        float[] embedding = nlpClient.embed(text);
-
-        Resume resume = Resume.builder()
-                .filename(file.getOriginalFilename())
-                .objectName(objectName)
-                .text(text)
-                .embeddingJson(java.util.Arrays.toString(embedding))
-                .build();
-        System.out.println("▶️ Upload reçu : " + file.getOriginalFilename());
-        System.out.println("▶️ Bucket utilisé : " + bucket);
-
-        return resumeRepository.save(resume);
+    @GetMapping("/candidate/me")
+    public ResponseEntity<ResumeSummaryDto> getMyResume(Authentication auth) {
+        return resumeRepository.findTopByCandidateEmailOrderByCreatedAtDesc(auth.getName())
+                .map(r -> ResponseEntity.ok(new ResumeSummaryDto(r.getId(), r.getFilename(), r.getCreatedAt())))
+                .orElse(ResponseEntity.noContent().build()); // 204 si pas de CV
     }
+
+    // ✅ 2) Télécharger le CV actuel
+    @PreAuthorize("hasRole('CANDIDATE')")
+    @GetMapping("/candidate/download")
+    public ResponseEntity<byte[]> downloadMyResume(Authentication auth) throws Exception {
+        Resume r = resumeRepository.findTopByCandidateEmailOrderByCreatedAtDesc(auth.getName())
+                .orElseThrow();
+
+        byte[] bytes = minioService.download(r.getMinioKey());
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + r.getFilename() + "\"")
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .body(bytes);
+    }
+
+    // ✅ 3) Supprimer le CV actuel (MinIO + DB + matches)
+    @DeleteMapping("/me")
+    @PreAuthorize("hasRole('CANDIDATE')")
+    public ResponseEntity<?> deleteMyResume(Authentication auth) {
+
+        String email = auth.getName();
+        resumeService.deleteMyResume(email);
+
+        return ResponseEntity.ok().build();
+    }
+
+    // ✅ 4) Upload + analyse (si déjà un CV, on le remplace)
+    @PreAuthorize("hasRole('CANDIDATE')")
+    @PostMapping("/candidate/upload")
+    public CandidateResponseDto uploadAndAnalyze(
+            @RequestParam("file") MultipartFile file,
+            Authentication auth) throws Exception {
+
+        String email = auth.getName();
+
+        // Si existe déjà, supprime l'ancien (simple)
+        Resume old = resumeRepository.findTopByCandidateEmailOrderByCreatedAtDesc(email).orElse(null);
+        if (old != null) {
+            jobMatchRepository.deleteByResumeId(old.getId());
+            try { minioService.delete(old.getMinioKey()); } catch (Exception ignored) {}
+            resumeRepository.delete(old);
+        }
+
+        // 1) Upload MinIO + Resume
+        String minioKey = minioService.upload(file);
+        Resume resume = resumeService.saveNewResume(email, file.getOriginalFilename(), minioKey);
+
+        // 2) Jobs pour NLP
+        List<Job> jobs = jobRepository.findAll();
+        List<Map<String, Object>> jobsJsonList = jobs.stream()
+                .map(j -> Map.<String, Object>of(
+                        "id", j.getId().toString(),
+                        "titre", j.getTitle(),
+                        "texte_brut", j.getDescription()
+                ))
+                .toList();
+
+        String jobsJson = objectMapper.writeValueAsString(jobsJsonList);
+
+        // 3) Appel FastAPI
+        CandidateResponseDto nlpRes = nlpClient.analyzeCandidate(
+                file.getBytes(),
+                file.getOriginalFilename(),
+                jobsJson
+        );
+
+        // 4) Update Resume
+        resume.setCompetences(nlpRes.cv_competences());
+        resume.setExperienceYears(nlpRes.experience_estimee());
+        resumeRepository.save(resume);
+
+        // 5) Sauvegarde JobMatch
+        for (RankedJobDto r : nlpRes.offres_classees()) {
+            Job job = jobRepository.findById(Long.parseLong(r.job_id())).orElseThrow();
+            JobMatch match = new JobMatch();
+            match.setJob(job);
+            match.setResume(resume);
+            match.setScore(r.score_pertinence());
+            jobMatchRepository.save(match);
+        }
+
+        return nlpRes;
+    }
+
+    // ✅ 5) Matching IA (depuis la DB JobMatch) trié par score desc
+    @PreAuthorize("hasRole('CANDIDATE')")
+    @GetMapping("/candidate/matches")
+    public List<Map<String, Object>> getMyMatches(Authentication auth) {
+        Resume r = resumeRepository.findTopByCandidateEmailOrderByCreatedAtDesc(auth.getName())
+                .orElseThrow();
+
+        List<JobMatch> matches = jobMatchRepository.findByResumeIdOrderByScoreDesc(r.getId());
+
+        return matches.stream().map(m -> Map.<String, Object>of(
+                "jobId", m.getJob().getId(),
+                "title", m.getJob().getTitle(),
+                "description", m.getJob().getDescription(),
+                "score", m.getScore()
+        )).toList();
+    }
+
 }

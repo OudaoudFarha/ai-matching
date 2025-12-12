@@ -30,22 +30,29 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // src/main/java/com/resume/resume_service/config/SecurityConfig.java
                 .authorizeHttpRequests(auth -> auth
-                        // Le preflight OPTIONS doit être autorisé
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-
-                        // endpoints publics
                         .requestMatchers("/api/auth/**", "/v3/api-docs/**", "/swagger-ui/**").permitAll()
 
-                        // accès candidat
+                        // CANDIDATE : upload CV & analyse
                         .requestMatchers("/api/resumes/**").hasRole("CANDIDATE")
 
-                        // accès recruteur
-                        .requestMatchers("/api/jobs/**", "/api/match/**").hasRole("RECRUITER")
 
-                        // le reste nécessite être connecté
+                        // RECRUITER : gestion des offres, matches, indexation
+                        .requestMatchers(HttpMethod.POST, "/api/jobs/**").hasRole("RECRUITER")
+                        .requestMatchers("/api/jobs/mine", "/api/jobs/*/index", "/api/jobs/*/matches").hasRole("RECRUITER")
+
+                        // CANDIDATE & RECRUITER : lecture des offres
+                        .requestMatchers(HttpMethod.GET, "/api/jobs/public", "/api/jobs/*").hasAnyRole("CANDIDATE","RECRUITER")
+                        .requestMatchers(HttpMethod.POST, "/api/jobs/*/screening").hasRole("RECRUITER")
+
+                        // matches « classiques » si tu les utilises des deux côtés
+                        .requestMatchers("/api/match/**").hasAnyRole("CANDIDATE","RECRUITER")
+
                         .anyRequest().authenticated()
                 )
+
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

@@ -1,29 +1,97 @@
 package com.resume.resume_service.nlp;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
+import com.resume.resume_service.nlp.dto.CandidateResponseDto;
+import com.resume.resume_service.nlp.dto.RecruiterResultDto;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
+import org.springframework.http.client.MultipartBodyBuilder;
+import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.Map;
 
-@Component
+@Service
+@RequiredArgsConstructor
 public class NlpClient {
-    private final WebClient http;
 
-    public NlpClient(@Value("${app.nlp.baseUrl}") String baseUrl) {
-        this.http = WebClient.builder().baseUrl(baseUrl).build();
-    }
+    private final WebClient nlpWebClient;   // bean défini ailleurs avec baseUrl FastAPI
 
-    public float[] embed(String text) {
-        Map<String, Object> resp = http.get()
-                .uri(uri -> uri.path("/embed").queryParam("text", text).build())
+    public CandidateResponseDto analyzeCandidate(byte[] cvBytes, String filename, String jobsJson) {
+        MultipartBodyBuilder mb = new MultipartBodyBuilder();
+        mb.part("cv_file", cvBytes)
+                .filename(filename)
+                .contentType(MediaType.APPLICATION_PDF);
+        mb.part("jobs_json", jobsJson);
+
+        return nlpWebClient.post()
+                .uri("/analyze-candidate")
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .body(BodyInserters.fromMultipartData(mb.build()))
                 .retrieve()
-                .bodyToMono(Map.class)
+                .bodyToMono(CandidateResponseDto.class)
                 .block();
-        var list = (java.util.List<Number>) resp.get("embedding");
-        float[] vec = new float[list.size()];
-        for (int i = 0; i < vec.length; i++) vec[i] = list.get(i).floatValue();
-        return vec;
     }
-}
 
+    public List<RecruiterResultDto> analyzeRecruiter(
+            String jobDescription,
+            Map<String, byte[]> files
+    ) {
+        MultipartBodyBuilder mb = new MultipartBodyBuilder();
+        mb.part("job_description", jobDescription);
+
+        files.forEach((name, bytes) -> {
+            mb.part("files", bytes)
+                    .filename(name)
+                    .contentType(MediaType.APPLICATION_PDF);
+        });
+
+        return nlpWebClient.post()
+                .uri("/analyze-recruiter")
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .body(BodyInserters.fromMultipartData(mb.build()))
+                .retrieve()
+                .bodyToFlux(RecruiterResultDto.class)
+                .collectList()
+                .block();
+    }
+
+    // utilisé pour l’indexation Qdrant
+    public float[] embed(String text) throws Exception {
+        // à adapter : appel à FastAPI ou autre service d'embedding
+        throw new UnsupportedOperationException("TODO: implémenter embed()");
+    }
+
+
+    public List<RecruiterResultDto> screeningRecruiter(
+            String jobDescription,
+            List<MultipartFile> files,
+            int topN
+    ) {
+        MultipartBodyBuilder mb = new MultipartBodyBuilder();
+        mb.part("jd_text", jobDescription);
+        mb.part("top_n", String.valueOf(topN));
+
+        for (MultipartFile f : files) {
+            try {
+                mb.part("files", f.getBytes())
+                        .filename(f.getOriginalFilename())
+                        .contentType(MediaType.APPLICATION_OCTET_STREAM);
+            } catch (Exception e) {
+                throw new RuntimeException("Erreur lecture fichier " + f.getOriginalFilename(), e);
+            }
+        }
+
+        return nlpWebClient.post()
+                .uri("/analyze-recruiter")   // endpoint FastAPI
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .body(BodyInserters.fromMultipartData(mb.build()))
+                .retrieve()
+                .bodyToFlux(RecruiterResultDto.class)
+                .collectList()
+                .block();
+    }
+
+}
