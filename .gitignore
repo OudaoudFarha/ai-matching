@@ -1,0 +1,38 @@
+# === Java / Maven ===
+target/
+*.iml
+.idea/
+.out/
+*.log
+
+# === Node / React ===
+node_modules/
+dist/
+build/
+*.cache
+
+# === Python / FastAPI (NLP) ===
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# === Docker / Données locales ===
+.env
+.env.*
+*.env
+*.local
+docker-data/
+data/
+logs/
+tmp/
+
+# === OS / Editors ===
+.DS_Store
+Thumbs.db
+.vscode/
+*.swp

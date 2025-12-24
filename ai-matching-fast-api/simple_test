@@ -1,0 +1,246 @@
+#!/usr/bin/env python3
+"""
+Script de test SIMPLE pour vérifier rapidement que FastAPI fonctionne.
+Utilise ce script si tu veux juste tester rapidement sans tous les détails.
+"""
+
+import requests
+import sys
+from pathlib import Path
+
+# Configuration
+BASE_URL = "http://localhost:8000"
+
+def test_connection():
+    """Test rapide de connexion"""
+    print("🔍 Test de connexion à FastAPI...")
+    
+    try:
+        response = requests.get(f"{BASE_URL}/", timeout=5)
+        if response.status_code == 200:
+            print("✅ FastAPI est accessible !")
+            return True
+        else:
+            print(f"❌ Erreur: Status {response.status_code}")
+            return False
+    except requests.exceptions.ConnectionError:
+        print("❌ Impossible de se connecter à FastAPI")
+        print("   Assure-toi que FastAPI est démarré:")
+        print("   uvicorn main_improved:app --reload")
+        return False
+    except Exception as e:
+        print(f"❌ Erreur: {e}")
+        return False
+
+def test_model_loaded():
+    """Vérifie que le modèle NLP est chargé"""
+    print("\n🤖 Test du modèle NLP...")
+    
+    try:
+        response = requests.get(f"{BASE_URL}/health", timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("model_loaded"):
+                print("✅ Modèle NLP chargé !")
+                print(f"   Cache: {data['cache_stats']['cv_count']} CV, {data['cache_stats']['job_count']} Jobs")
+                return True
+            else:
+                print("❌ Modèle NLP non chargé")
+                return False
+        else:
+            print(f"❌ Erreur: Status {response.status_code}")
+            return False
+    except Exception as e:
+        print(f"❌ Erreur: {e}")
+        return False
+
+def test_cv_analysis():
+    """Test d'analyse d'un CV"""
+    print("\n📄 Test d'analyse de CV...")
+    
+    # Chercher un CV dans test_files/
+    test_files = list(Path("test_files").glob("*.pdf")) + list(Path("test_files").glob("*.docx"))
+    
+    if not test_files:
+        print("⚠️  Aucun CV trouvé dans test_files/")
+        print("   Place un CV (PDF ou DOCX) dans le dossier test_files/ pour tester")
+        return None
+    
+    cv_path = test_files[0]
+    print(f"   Utilisation de: {cv_path.name}")
+    
+    try:
+        with open(cv_path, 'rb') as f:
+            files = {'cv_file': f}
+            data = {
+                'cv_id': 'quick-test-cv',
+                'candidate_id': 'quick-test-candidate'
+            }
+            
+            response = requests.post(
+                f"{BASE_URL}/api/cv/analyze",
+                files=files,
+                data=data,
+                timeout=30
+            )
+        
+        if response.status_code == 200:
+            result = response.json()
+            metadata = result['metadata']
+            
+            print("✅ CV analysé avec succès !")
+            print(f"   - Expérience: {metadata['experience_niveau_estime']} ans")
+            print(f"   - Éducation: {metadata['education_level']}")
+            print(f"   - Compétences: {metadata['competences_count']} détectées")
+            
+            return result
+        else:
+            print(f"❌ Erreur: Status {response.status_code}")
+            print(f"   {response.text[:200]}")
+            return None
+            
+    except Exception as e:
+        print(f"❌ Erreur: {e}")
+        return None
+
+def test_job_analysis():
+    """Test d'analyse d'une Job Description"""
+    print("\n💼 Test d'analyse de Job Description...")
+    
+    job_description = """
+    Poste: Développeur Python Senior
+    
+    Recherche développeur Python avec 5+ ans d'expérience.
+    
+    Compétences requises:
+    - Python (obligatoire)
+    - FastAPI ou Django
+    - PostgreSQL
+    - Docker
+    - Git
+    
+    Formation: Master en informatique
+    """
+    
+    try:
+        data = {
+            'job_id': 'quick-test-job',
+            'titre': 'Développeur Python Senior',
+            'description': job_description
+        }
+        
+        response = requests.post(
+            f"{BASE_URL}/api/job/analyze",
+            data=data,
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            print("✅ Job Description analysée !")
+            print(f"   - Expérience requise: {result['experience_requise']} ans")
+            print(f"   - Formation: {result['education_requise']}")
+            print(f"   - Compétences: {len(result['competences_requises'])} requises")
+            return result
+        else:
+            print(f"❌ Erreur: Status {response.status_code}")
+            return None
+            
+    except Exception as e:
+        print(f"❌ Erreur: {e}")
+        return None
+
+def test_matching():
+    """Test de matching"""
+    print("\n🎯 Test de matching CV-Job...")
+    
+    try:
+        request_data = {
+            'cv_id': 'quick-test-cv',
+            'job_offer_id': 'quick-test-job'
+        }
+        
+        response = requests.post(
+            f"{BASE_URL}/api/matching/calculate",
+            json=request_data,
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            score = result['score_total']
+            
+            print("✅ Matching calculé !")
+            print(f"   Score Total: {score:.1f}%")
+            
+            if score >= 70:
+                print("   🌟 Excellent match !")
+            elif score >= 50:
+                print("   👍 Bon match")
+            else:
+                print("   🤔 Match moyen")
+            
+            return result
+        else:
+            print(f"❌ Erreur: Status {response.status_code}")
+            return None
+            
+    except Exception as e:
+        print(f"❌ Erreur: {e}")
+        return None
+
+def main():
+    """Fonction principale"""
+    print("="*60)
+    print("  TEST RAPIDE - Service FastAPI NLP".center(60))
+    print("="*60)
+    
+    # Test 1: Connexion
+    if not test_connection():
+        print("\n❌ Tests arrêtés: FastAPI non accessible")
+        sys.exit(1)
+    
+    # Test 2: Modèle
+    if not test_model_loaded():
+        print("\n⚠️  Tests arrêtés: Modèle NLP non chargé")
+        print("   Attends quelques secondes et réessaye")
+        sys.exit(1)
+    
+    # Test 3: CV
+    cv_result = test_cv_analysis()
+    if not cv_result:
+        print("\n⚠️  Impossible de tester le matching sans CV")
+        print("\n✅ Tests de base réussis (connexion + modèle OK)")
+        print("   Pour tester l'analyse de CV, ajoute un CV dans test_files/")
+        sys.exit(0)
+    
+    # Test 4: Job
+    job_result = test_job_analysis()
+    if not job_result:
+        print("\n⚠️  Test Job échoué")
+        sys.exit(1)
+    
+    # Test 5: Matching
+    matching_result = test_matching()
+    if not matching_result:
+        print("\n⚠️  Test Matching échoué")
+        sys.exit(1)
+    
+    # Résumé final
+    print("\n" + "="*60)
+    print("✅ TOUS LES TESTS SONT RÉUSSIS !".center(60))
+    print("="*60)
+    print("\n🎉 Ton FastAPI fonctionne parfaitement !")
+    print("\nProchaines étapes:")
+    print("  1. Lance test_fastapi.py pour des tests détaillés")
+    print("  2. Ouvre http://localhost:8000/docs pour l'interface Swagger")
+    print("  3. Informe ta binôme que le service NLP est prêt !")
+    
+    sys.exit(0)
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\n\n⚠️  Tests interrompus par l'utilisateur")
+        sys.exit(1)

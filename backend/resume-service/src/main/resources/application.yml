@@ -1,0 +1,22 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/matching
+    username: postgres
+    password: 123456
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate.jdbc.lob.non_contextual_creation: true
+
+app:
+  minio:
+    url: http://localhost:9000
+    accessKey: minio
+    secretKey: minio123
+    bucket: resumes
+nlp:
+      base-url: http://localhost:8000
