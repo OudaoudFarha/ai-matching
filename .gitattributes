@@ -1,0 +1,17 @@
+* text=auto
+*.sh eol=lf
+*.yml eol=lf
+*.yaml eol=lf
+*.md eol=lf
+*.json eol=lf
+*.ts eol=lf
+*.tsx eol=lf
+*.js eol=lf
+
+# binaires
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.pdf binary
+*.jar binary
+*.exe binary
