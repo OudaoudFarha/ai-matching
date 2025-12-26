@@ -1,5 +1,5 @@
 import { useState, useEffect, type ReactNode } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom"; // ✅ Ajout useNavigate
 import { useAuth } from "../auth/AuthContext";
 import api from "../api";
 
@@ -15,6 +15,7 @@ interface User {
 export default function CandidateLayout({ children }: Props) {
   const { logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate(); // ✅ Hook de navigation
   
   const [user, setUser] = useState<User | null>(null);
 
@@ -34,7 +35,12 @@ export default function CandidateLayout({ children }: Props) {
     return user.email.split('@')[0];
   };
 
-  const isActive = (path: string) => location.pathname === path;
+  // Fonction pour vérifier si une route est active (supporte les sous-routes)
+  const isActive = (path: string) => {
+    if (path === "/candidate" && location.pathname === "/candidate") return true;
+    if (path !== "/candidate" && location.pathname.startsWith(path)) return true;
+    return false;
+  };
 
   return (
     <div style={styles.container}>
@@ -44,16 +50,20 @@ export default function CandidateLayout({ children }: Props) {
         {/* --- PARTIE GAUCHE (Logo + Profil) --- */}
         <div style={styles.leftSection}>
           
-          {/* 1. LOGO */}
-          <div style={styles.logoContainer}>
+          {/* 1. LOGO CLIQUABLE -> DASHBOARD */}
+          <div 
+            style={styles.logoContainer} 
+            onClick={() => navigate('/candidate')} // ✅ Redirection Dashboard
+            title="Aller au tableau de bord"
+          >
             <div style={styles.logoBadge}>AI</div>
             <span style={styles.logoText}>Matching</span>
           </div>
 
-          {/* Petit séparateur visuel entre Logo et Profil */}
+          {/* Petit séparateur */}
           <div style={styles.separator}></div>
 
-          {/* 2. PROFIL (Déplacé ici à gauche) */}
+          {/* 2. PROFIL */}
           <Link to="/candidate/profile" style={styles.profileSection} title="Mon Profil">
             <div style={styles.avatarCircle}>
               {getInitials()}
@@ -67,13 +77,32 @@ export default function CandidateLayout({ children }: Props) {
 
         {/* --- PARTIE DROITE (Navigation) --- */}
         <nav style={styles.nav}>
+          
+          {/* ✅ 1. Lien Tableau de bord */}
           <Link 
             to="/candidate" 
-            style={isActive('/candidate') ? styles.linkActive : styles.link}
+            style={isActive('/candidate') && location.pathname === '/candidate' ? styles.linkActive : styles.link}
           >
-            Offres
+            📊 Dashboard
           </Link>
 
+          {/* ✅ 2. Lien Offres (Corrigé vers /candidate/jobs) */}
+          <Link 
+            to="/candidate/jobs" 
+            style={isActive('/candidate/jobs') ? styles.linkActive : styles.link}
+          >
+            🔍 Offres
+          </Link>
+
+          {/* 3. Lien Mes Candidatures */}
+          <Link 
+            to="/candidate/applications" 
+            style={isActive('/candidate/applications') ? styles.linkActive : styles.link}
+          >
+            📂 Candidatures
+          </Link>
+
+          {/* 4. Lien Upload */}
           <Link
             to="/candidate/upload"
             style={styles.btnSecondary}
@@ -81,6 +110,7 @@ export default function CandidateLayout({ children }: Props) {
             📄 Uploader CV
           </Link>
 
+          {/* 5. Lien Matching IA */}
           <Link
             to="/candidate/matching"
             style={styles.btnPrimary}
@@ -113,7 +143,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   header: {
     display: "flex",
-    justifyContent: "space-between", // Sépare la Gauche (Logo+Profil) de la Droite (Nav)
+    justifyContent: "space-between",
     alignItems: "center",
     padding: "0 32px",
     height: "70px",
@@ -124,11 +154,11 @@ const styles: Record<string, React.CSSProperties> = {
     zIndex: 50,
   },
   
-  // NOUVEAU : Conteneur pour grouper Logo et Profil à gauche
+  // Conteneur Gauche
   leftSection: {
     display: "flex",
     alignItems: "center",
-    gap: "24px", // Espace entre le logo et le profil
+    gap: "24px",
   },
 
   logoContainer: {
@@ -137,7 +167,7 @@ const styles: Record<string, React.CSSProperties> = {
     gap: "8px",
     fontWeight: 700,
     fontSize: "20px",
-    cursor: "pointer",
+    cursor: "pointer", // ✅ Curseur main pour indiquer le clic
   },
   logoBadge: {
     backgroundColor: "#2563eb",
@@ -162,12 +192,18 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 500,
     fontSize: "14px",
     transition: "color 0.2s",
+    display: "flex", 
+    alignItems: "center",
+    gap: "6px"
   },
   linkActive: {
     color: "#2563eb",
     textDecoration: "none",
     fontWeight: 600,
     fontSize: "14px",
+    display: "flex", 
+    alignItems: "center",
+    gap: "6px"
   },
   btnSecondary: {
     padding: "8px 16px",
@@ -204,7 +240,7 @@ const styles: Record<string, React.CSSProperties> = {
     margin: "0 4px",
   },
   
-  // --- SECTION PROFIL (Modifiée pour s'intégrer à gauche) ---
+  // --- SECTION PROFIL ---
   profileSection: {
     display: "flex",
     flexDirection: "row",
@@ -214,9 +250,9 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: "pointer",
     padding: "6px 12px",
     borderRadius: "30px",
-    border: "1px solid #f3f4f6", // Petit bord gris pour bien séparer
+    border: "1px solid #f3f4f6",
     transition: "background 0.2s, border 0.2s",
-    backgroundColor: "#f9fafb", // Fond très léger pour le distinguer
+    backgroundColor: "#f9fafb",
   },
   avatarCircle: {
     width: "32px",

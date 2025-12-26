@@ -1,0 +1,75 @@
+version: "3.9"
+
+services:
+  # ---------------- JENKINS ----------------
+  jenkins:
+    image: jenkins/jenkins:lts
+    container_name: jenkins
+    user: root
+    ports:
+      - "8081:8080"   # UI Jenkins
+      - "50000:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      # facultatif si tu veux que Jenkins build des images Docker:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - dev-net
+
+  # ---------------- SONARQUBE ----------------
+  sonarqube:
+    image: sonarqube:lts-community
+    container_name: sonarqube
+    depends_on:
+      - sonar-db
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://sonar-db:5432/sonar
+      SONAR_JDBC_USERNAME: sonar
+      SONAR_JDBC_PASSWORD: sonar
+    ports:
+      - "9000:9000"
+    networks:
+      - dev-net
+
+  sonar-db:
+    image: postgres:15
+    container_name: sonar-db
+    environment:
+      POSTGRES_USER: sonar
+      POSTGRES_PASSWORD: sonar
+      POSTGRES_DB: sonar
+    volumes:
+      - sonar_db_data:/var/lib/postgresql/data
+    networks:
+      - dev-net
+
+  # ---------------- PROMETHEUS ----------------
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - dev-net
+
+  # ---------------- GRAFANA ----------------
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - dev-net
+    volumes:
+      - grafana_data:/var/lib/grafana
+
+networks:
+  dev-net:
+    driver: bridge
+
+volumes:
+  jenkins_home:
+  sonar_db_data:
+  grafana_data:

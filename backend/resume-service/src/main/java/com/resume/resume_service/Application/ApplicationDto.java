@@ -15,6 +15,8 @@ public class ApplicationDto {
 
     private Long id;
     private Long jobId;
+    private String jobTitle;
+    private String jobDescription;
     private Long candidateId;
     private String candidateName;     // ici : on va mettre l'email
     private String candidateEmail;    // et ici aussi, pour plus de clarté
@@ -37,17 +39,31 @@ public class ApplicationDto {
         String candidateName = null;
         String candidateEmail = null;
         Long candidateId = null;
+        String jobTitle = null;
+        String jobDescription = null;
+        Long jobId = null;
 
+        // Extraction sécurisée des infos candidat
         if (app.getCandidate() != null) {
             var user = app.getCandidate();
             candidateId = user.getId();
             candidateEmail = user.getEmail();
-            candidateName = user.getEmail();   // ✅ on utilise l’email comme "nom"
+            // On utilise l'email comme nom par défaut si pas de champ nom/prénom
+            candidateName = user.getEmail();
+        }
+
+        // Extraction sécurisée des infos Job
+        if (app.getJob() != null) {
+            jobId = app.getJob().getId();
+            jobTitle = app.getJob().getTitle();
+            jobDescription = app.getJob().getDescription();
         }
 
         return ApplicationDto.builder()
                 .id(app.getId())
                 .jobId(app.getJob() != null ? app.getJob().getId() : null)
+                .jobTitle(jobTitle) // ✅ Ajouté
+                .jobDescription(jobDescription)
                 .candidateId(candidateId)
                 .candidateName(candidateName)
                 .candidateEmail(candidateEmail)

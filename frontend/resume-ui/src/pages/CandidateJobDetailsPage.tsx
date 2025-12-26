@@ -81,32 +81,38 @@ const [applyMode, setApplyMode] = useState<ApplyMode>("upload");
 };
 
 
+type HasAppliedResponse = {
+  hasApplied: boolean;
+};
+
 useEffect(() => {
   const loadJobAndResume = async () => {
     try {
       setLoading(true);
       setLoadingResume(true);
 
-      const [jobRes, resumeRes] = await Promise.all([
+      const [jobRes, resumeRes, hasAppliedRes] = await Promise.all([
         api.get(`/api/jobs/${id}`),
         api.get<ResumeSummaryDto>("/api/resumes/candidate/me").catch((err) => {
-          // 204 ou 404 = pas de CV, ce n'est pas une erreur grave
           if (err?.response?.status === 204 || err?.response?.status === 404) {
             return { data: null } as any;
           }
           throw err;
         }),
+        api.get<HasAppliedResponse>(`/api/candidate/jobs/${id}/has-applied`),
       ]);
 
       setJob(jobRes.data);
       setExistingResume(resumeRes.data);
 
-      // Si un CV existe, on propose par défaut "utiliser mon CV"
+      // ✅ très important : on met à jour déjà postulé depuis le backend
+      setAlreadyApplied(hasAppliedRes.data.hasApplied);
+
       if (resumeRes.data) {
         setApplyMode("existing");
       }
     } catch (err) {
-      console.error("Erreur chargement offre ou CV", err);
+      console.error("Erreur chargement offre / CV / has-applied", err);
     } finally {
       setLoading(false);
       setLoadingResume(false);
@@ -115,6 +121,7 @@ useEffect(() => {
 
   loadJobAndResume();
 }, [id]);
+
 
   if (loading)
     return (

@@ -41,7 +41,9 @@ public class Application {
 
     @Enumerated(EnumType.STRING)
     private ApplicationStatus status = ApplicationStatus.APPLIED;
-
+    // ✅ AJOUT CRUCIAL : Le score de matching (0.0 à 1.0)
+    // Tu devras remplir ce champ quand tu fais l'IA ou quand le candidat postule
+    private Double matchScore;
     // getters / setters
 }
 

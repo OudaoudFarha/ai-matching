@@ -1,5 +1,5 @@
 import { useState, useEffect, type ReactNode } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom"; // ✅ Ajout de useNavigate
 import { useAuth } from "../auth/AuthContext";
 import api from "../api";
 
@@ -15,23 +15,21 @@ interface User {
 export default function RecruiterLayout({ children }: Props) {
   const { logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate(); // ✅ Hook de navigation
   
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    // Récupération de l'utilisateur connecté
     api.get("/api/users/me")
       .then((res) => setUser(res.data))
       .catch(() => console.log("Non connecté"));
   }, []);
 
-  // 1. Initiales
   const getInitials = () => {
     if (!user || !user.email) return "👤";
     return user.email.substring(0, 2).toUpperCase();
   };
 
-  // 2. Nom d'affichage
   const getDisplayName = () => {
     if (!user || !user.email) return "Recruteur";
     return user.email.split('@')[0];
@@ -47,8 +45,11 @@ export default function RecruiterLayout({ children }: Props) {
         {/* --- PARTIE GAUCHE (Logo + Profil) --- */}
         <div style={styles.leftSection}>
             
-            {/* LOGO */}
-            <div style={styles.logoContainer}>
+            {/* LOGO CLIQUABLE VERS DASHBOARD */}
+            <div 
+              style={styles.logoContainer} 
+              onClick={() => navigate('/recruiter')} // ✅ Redirection vers Dashboard
+            >
               <div style={styles.logoBadge}>AI</div>
               <span style={styles.logoText}>Matching</span>
               <span style={styles.roleBadge}>Recruteur</span>
@@ -93,11 +94,11 @@ export default function RecruiterLayout({ children }: Props) {
   );
 }
 
-// --- STYLES (Adaptés pour matcher le style Candidat) ---
+// --- STYLES ---
 const styles: Record<string, React.CSSProperties> = {
   container: {
     minHeight: "100vh",
-    backgroundColor: "#f1f5f9", // Gris très clair
+    backgroundColor: "#f1f5f9",
     color: "#0f172a", 
     fontFamily: "'Inter', sans-serif",
   },
@@ -108,7 +109,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "0 32px",
     height: "70px",
     backgroundColor: "#ffffff",
-    boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)", // Ombre identique au candidat
+    boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)",
     position: "sticky",
     top: 0,
     zIndex: 50,
@@ -127,7 +128,7 @@ const styles: Record<string, React.CSSProperties> = {
     gap: "8px",
     fontWeight: 700,
     fontSize: "20px",
-    cursor: "default",
+    cursor: "pointer", // ✅ Changé de 'default' à 'pointer'
   },
   logoBadge: {
     backgroundColor: "#2563eb",
@@ -154,7 +155,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   nav: {
     display: "flex",
-    gap: "16px", // Ajusté pour matcher candidat (était 24px)
+    gap: "16px",
     alignItems: "center",
   },
   link: {
@@ -183,7 +184,7 @@ const styles: Record<string, React.CSSProperties> = {
     margin: "0 4px",
   },
   
-  // --- STYLE PROFIL MIS À JOUR (Identique Candidat) ---
+  // --- STYLE PROFIL ---
   profileSection: {
     display: "flex",
     flexDirection: "row",
@@ -193,7 +194,6 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: "pointer",
     padding: "6px 12px",
     borderRadius: "30px",
-    // Ces deux lignes assurent le même look "gris doux" que le candidat
     border: "1px solid #f3f4f6", 
     backgroundColor: "#f9fafb", 
     transition: "background 0.2s, border 0.2s",
@@ -202,7 +202,7 @@ const styles: Record<string, React.CSSProperties> = {
     width: "32px",
     height: "32px",
     borderRadius: "50%",
-    backgroundColor: "#f8fafc", // Garde le ton légèrement plus pro/froid du recruteur
+    backgroundColor: "#f8fafc",
     color: "#0f172a",
     border: "1px solid #e2e8f0",
     display: "flex",
@@ -215,7 +215,7 @@ const styles: Record<string, React.CSSProperties> = {
   userName: {
     fontSize: "14px",
     fontWeight: 600,
-    color: "#334155", // Gris foncé (Slate 700)
+    color: "#334155",
     maxWidth: "140px",
     overflow: "hidden",
     textOverflow: "ellipsis",

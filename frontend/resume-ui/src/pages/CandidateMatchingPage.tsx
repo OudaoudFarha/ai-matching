@@ -9,10 +9,54 @@ type MatchRow = {
   score: number;
 };
 
+type Recommendation = {
+  score: number;
+  missingSkills: string[];
+  suggestedKeywords: string[];
+  experienceAdvice: string;
+  commonSkills: string[];     // NEW
+  extraSkills: string[];      // NEW
+  skillsAdvice: string;       // NEW
+};
+// 🔹 Helpers GLOBAUX (en dehors du composant)
+
+const getScoreEmojiAndText = (score: number) => {
+  if (score >= 80) return { emoji: "🟢", text: "Excellent" };
+  if (score >= 60) return { emoji: "🟠", text: "Moyen" };
+  return { emoji: "🔴", text: "À renforcer" };
+};
+
+const TRAINING_SUGGESTIONS: Record<string, string> = {
+  DOCKER: "Docker for Data Science (Udemy)",
+  AWS: "AWS Certified Machine Learning (Coursera)",
+  "CLOUD AWS": "AWS Certified Machine Learning (Coursera)",
+  "CI/CD": "CI/CD Pipelines with GitHub Actions (Coursera)",
+  KUBERNETES: "Kubernetes Hands-On (Udemy)",
+  "MACHINE LEARNING": "Machine Learning – Andrew Ng (Coursera)",
+};
+
+const getSuggestedTrainings = (missingSkills: string[]): string[] => {
+  const suggestions: string[] = [];
+
+  missingSkills.forEach((skill) => {
+    Object.entries(TRAINING_SUGGESTIONS).forEach(([key, value]) => {
+      if (skill.toUpperCase().includes(key) && !suggestions.includes(value)) {
+        suggestions.push(value);
+      }
+    });
+  });
+
+  return suggestions.slice(0, 3);
+};
+
 export default function CandidateMatchingPage() {
   const [rows, setRows] = useState<MatchRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+const [recommendations, setRecommendations] = useState<Record<number, Recommendation | null>>({});
+const [openRecJobId, setOpenRecJobId] = useState<number | null>(null);
+const [recLoadingJobId, setRecLoadingJobId] = useState<number | null>(null);
+const [recErrorJobId, setRecErrorJobId] = useState<number | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -48,6 +92,53 @@ export default function CandidateMatchingPage() {
     if (score >= 50) return "Bon Match";
     return "Match Partiel";
   };
+  const handleToggleRecommendations = async (jobId: number) => {
+  // Si on reclique sur la même carte => on referme
+  if (openRecJobId === jobId) {
+    setOpenRecJobId(null);
+    return;
+  }
+ 
+
+
+const getSuggestedTrainings = (missingSkills: string[]): string[] => {
+  const suggestions: string[] = [];
+
+  missingSkills.forEach((skill) => {
+    Object.entries(TRAINING_SUGGESTIONS).forEach(([key, value]) => {
+      if (skill.toUpperCase().includes(key) && !suggestions.includes(value)) {
+        suggestions.push(value);
+      }
+    });
+  });
+
+  return suggestions.slice(0, 3);
+};
+
+
+  setRecErrorJobId(null);
+
+  // Si on n'a pas encore de reco pour ce job, on va les chercher
+  if (!recommendations[jobId]) {
+    try {
+      setRecLoadingJobId(jobId);
+      const res = await api.get<Recommendation>(`/api/candidate/jobs/${jobId}/recommendations`);
+      setRecommendations(prev => ({
+        ...prev,
+        [jobId]: res.data,
+      }));
+    } catch (e) {
+      console.error(e);
+      setRecErrorJobId(jobId);
+    } finally {
+      setRecLoadingJobId(null);
+    }
+  }
+
+  // On ouvre la section pour ce job
+  setOpenRecJobId(jobId);
+};
+
 
   return (
     <div>
@@ -88,10 +179,13 @@ export default function CandidateMatchingPage() {
       )}
 
       <div style={styles.grid}>
-        {rows.map((m) => {
-          const safeScore = Math.min(Math.max(m.score, 0), 100);
-          const color = getScoreColor(safeScore);
-          const displayScore = Math.round(safeScore);
+     {rows.map((m) => {
+  const safeScore = Math.min(Math.max(m.score, 0), 100);
+  const color = getScoreColor(safeScore);
+  const displayScore = Math.round(safeScore);
+
+  // ✅ on récupère la reco pour ce job
+  const recommendation = recommendations[m.jobId];
 
           return (
             <div key={m.jobId} style={styles.card}>
@@ -128,15 +222,126 @@ export default function CandidateMatchingPage() {
                 </p>
               </div>
 
-              <div style={styles.cardFooter}>
-                {/* --- MODIFICATION ICI : Lien vers les détails --- */}
-                <Link 
-                  to={`/candidate/jobs/${m.jobId}`} 
-                  style={styles.btnOutlineLink} // Nouveau style pour le lien
-                >
-                  Voir les détails
-                </Link>
-              </div>
+             <div style={styles.cardFooter}>
+  {/* Lien existant vers la page de détails */}
+  <Link 
+    to={`/candidate/jobs/${m.jobId}`} 
+    style={styles.btnOutlineLink}
+  >
+    Voir les détails
+  </Link>
+
+  {/* Bouton pour afficher les recommandations CV */}
+  <button
+    style={{ ...styles.btnOutlineLink, marginTop: 8 }}
+    onClick={() => handleToggleRecommendations(m.jobId)}
+  >
+    {openRecJobId === m.jobId ? "Masquer les recommandations" : "Voir les recommandations CV"}
+  </button>
+
+  {/* Zone de recommandations pour ce job */}
+
+  {openRecJobId === m.jobId && (
+    <div style={styles.recoBox}>
+      {recLoadingJobId === m.jobId && (
+        <p style={{ fontSize: 13, color: "#64748b", margin: 0 }}>
+          Analyse des recommandations en cours...
+        </p>
+      )}
+
+      {recErrorJobId === m.jobId && (
+        <p style={{ fontSize: 13, color: "#b91c1c", margin: 0 }}>
+          Impossible de charger les recommandations pour ce poste.
+        </p>
+      )}
+
+      {recLoadingJobId !== m.jobId &&
+  recErrorJobId !== m.jobId &&
+  recommendation && (
+    <>
+      {(() => {
+        const localScore = Math.round(recommendation.score);
+        const { emoji, text } = getScoreEmojiAndText(localScore);
+        const criticalMissing = recommendation.missingSkills || [];
+        const trainings = getSuggestedTrainings(criticalMissing);
+
+        return (
+          <div style={{ fontSize: 13, lineHeight: 1.5 }}>
+            {/* Titre + score comme ton exemple */}
+            <p style={{ margin: "4px 0" }}>
+              <strong>Titre du poste :</strong> {m.title}
+            </p>
+            <p style={{ margin: "4px 0" }}>
+              <strong>Votre score actuel :</strong>{" "}
+              {emoji} {localScore}% ({text})
+            </p>
+
+            {/* Compétences manquantes / critiques */}
+            {criticalMissing.length > 0 && (
+              <>
+                <p style={{ marginTop: 8 }}>
+                  <strong>⚠️ Compétences manquantes (clés) :</strong>
+                </p>
+                <ul style={styles.recoList}>
+                  {criticalMissing.map((s, idx) => (
+                    <li key={idx}>❌ {s}</li>
+                  ))}
+                </ul>
+              </>
+            )}
+
+            {/* Nos conseils pour ce poste */}
+            <p style={{ marginTop: 10, marginBottom: 4 }}>
+              <strong>💡 Nos conseils pour ce poste :</strong>
+            </p>
+            <ul style={styles.recoList}>
+              {/* Mettre en avant ce que tu as déjà */}
+              {recommendation.commonSkills?.length > 0 && (
+                <li>
+                  Mettez en avant dans votre CV vos expériences avec :{" "}
+                  <strong>{recommendation.commonSkills.join(", ")}</strong>.
+                </li>
+              )}
+
+              {/* Ajouter les mots-clés manquants */}
+              {recommendation.suggestedKeywords?.length > 0 && (
+                <li>
+                  Ajoutez explicitement ces technologies ou mots-clés dans votre CV
+                  (section Compétences ou Projets) :{" "}
+                  <strong>{recommendation.suggestedKeywords.join(", ")}</strong>.
+                </li>
+              )}
+
+              {/* Conseil expérience venant du backend */}
+              {recommendation.experienceAdvice && (
+                <li>{recommendation.experienceAdvice}</li>
+              )}
+            </ul>
+
+            {/* Formations suggérées (bonus) */}
+            {trainings.length > 0 && (
+              <>
+                <p style={{ marginTop: 10, marginBottom: 4 }}>
+                  <strong>🎓 Formations suggérées (bonus) :</strong>
+                </p>
+                <ul style={styles.recoList}>
+                  {trainings.map((t, idx) => (
+                    <li key={idx}>{t}</li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </div>
+        );
+      })()}
+    </>
+  )}
+
+    </div>
+  )}
+
+</div>
+
             </div>
           );
         })}
@@ -252,4 +457,20 @@ const styles: any = {
     color: "#64748b",
     border: "1px dashed #cbd5e1",
   },
+
+  recoBox: {
+  marginTop: 10,
+  padding: 10,
+  backgroundColor: "#f9fafb",
+  borderRadius: 8,
+  border: "1px dashed #cbd5e1",
+  textAlign: "left",
+},
+recoList: {
+  margin: "4px 0 0 16px",
+  padding: 0,
+  fontSize: 13,
+  color: "#4b5563",
+},
+
 };

@@ -1,6 +1,7 @@
 package com.resume.resume_service.nlp;
 
 import com.resume.resume_service.nlp.dto.CandidateResponseDto;
+import com.resume.resume_service.nlp.dto.RecommendationDto;
 import com.resume.resume_service.nlp.dto.RecruiterResultDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -95,6 +96,21 @@ public class NlpClient {
                 .retrieve()
                 .bodyToFlux(RecruiterResultDto.class)
                 .collectList()
+                .block();
+    }
+
+
+    public RecommendationDto recommendForCandidate(String jobDescription, byte[] cvBytes, String filename) {
+        MultipartBodyBuilder mb = new MultipartBodyBuilder();
+        mb.part("job_description", jobDescription);
+        mb.part("cv_file", cvBytes).filename(filename).contentType(MediaType.APPLICATION_PDF);
+
+        return nlpWebClient.post()
+                .uri("/recommend-candidate")
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .body(BodyInserters.fromMultipartData(mb.build()))
+                .retrieve()
+                .bodyToMono(RecommendationDto.class)
                 .block();
     }
 

@@ -6,6 +6,7 @@ import com.resume.resume_service.Services.MinioService;
 import com.resume.resume_service.auth.User;
 import com.resume.resume_service.auth.UserRepository;
 import com.resume.resume_service.nlp.NlpClient;
+import com.resume.resume_service.nlp.dto.RecommendationDto;
 import com.resume.resume_service.resume.ResumeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
@@ -21,6 +22,7 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api")
@@ -199,5 +201,68 @@ public class ApplicationController {
                         "attachment; filename=\"" + filename.replace("\"", "") + "\"")
                 .contentType(MediaType.APPLICATION_PDF)
                 .body(data);
+    }
+
+    // Dans ApplicationController.java
+    @GetMapping("/candidate/jobs/{jobId}/recommendations")
+    @PreAuthorize("hasRole('CANDIDATE')")
+    public RecommendationDto getRecommendation(
+            @PathVariable Long jobId,
+            Authentication auth
+    ) throws Exception {
+        User candidate = userRepository.findByEmail(auth.getName())
+                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+
+        // Dernier CV uploadé par ce candidat
+        Resume resume = resumeRepository
+                .findTopByCandidateEmailOrderByCreatedAtDesc(candidate.getEmail())
+                .orElseThrow(() -> new RuntimeException(
+                        "Aucun CV existant trouvé. Veuillez d'abord uploader un CV."
+                ));
+
+        Job job = jobRepository.findById(jobId)
+                .orElseThrow(() -> new RuntimeException("Offre non trouvée"));
+
+        byte[] cvBytes = minioService.download(resume.getMinioKey());
+
+        return nlpClient.recommendForCandidate(
+                job.getDescription(),
+                cvBytes,
+                resume.getFilename()
+        );
+    }
+
+    // ✅ Vérifier si le candidat connecté a déjà postulé à cette offre
+    @GetMapping("/candidate/jobs/{jobId}/has-applied")
+    @PreAuthorize("hasRole('CANDIDATE')")
+    public Map<String, Boolean> hasApplied(
+            @PathVariable Long jobId,
+            Authentication auth
+    ) {
+        var candidate = userRepository.findByEmail(auth.getName())
+                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+
+        boolean exists = applicationRepository
+                .existsByJob_IdAndCandidate_Id(jobId, candidate.getId());
+
+        Map<String, Boolean> result = new HashMap<>();
+        result.put("hasApplied", exists);
+        return result;
+    }
+
+    // 4) ✅ NOUVEAU : Candidat consulte ses propres candidatures
+    @GetMapping("/candidate/my-applications")
+    @PreAuthorize("hasRole('CANDIDATE')")
+    public List<ApplicationDto> getMyApplications(Authentication authentication) {
+
+        String email = authentication.getName();
+
+        // Récupère via le Repository (Assurez-vous d'avoir ajouté la méthode findByCandidate_Email... dans ApplicationRepository)
+        List<Application> myApps = applicationRepository.findByCandidate_EmailOrderByAppliedAtDesc(email);
+
+        // Transforme en DTO
+        return myApps.stream()
+                .map(app -> ApplicationDto.fromEntity(app, app.getMatchScore()))
+                .collect(Collectors.toList());
     }
 }

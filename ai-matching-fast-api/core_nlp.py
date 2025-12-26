@@ -11,14 +11,43 @@ import numpy as np
 # ==============================================================================
 
 # Liste étendue pour matcher les compétences techniques (Tech Focus du cahier des charges) [cite: 24]
+# Liste étendue pour matcher les compétences techniques
 KEY_COMPETENCES_LIST = [
-    "JAVA", "SPRING BOOT", "JEE", "REACT", "REACT NATIVE", "ANGULAR", "PYTHON", "NLP", 
-    "SENTENCE-BERT", "POSTGRESQL", "SQL", "MONGODB", "NOSQL", "MACHINE LEARNING", 
-    "DEEP LEARNING", "TENSORFLOW", "PYTORCH", "KERAS", "AWS", "AZURE", "GCP", 
-    "KUBERNETES", "DOCKER", "JENKINS", "GITLAB CI", "FASTAPI", "FLASK", "DJANGO",
-    "MLFLOW", "FLUTTER", "SWIFT", "KOTLIN", "CI/CD", "SCRUM", "AGILE", "DEVOPS", 
-    "CYBERSECURITE", "TABLEAU", "POWER BI", "EXCEL", "GIT", "JIRA", "UML", "MERISE"
+    # Backend Java / Microservices
+    "JAVA", "SPRING", "SPRING BOOT", "SPRING MVC", "SPRING SECURITY",
+    "SPRING DATA", "SPRING CLOUD", "MICROSERVICES", "MICROSERVICE",
+    "JEE", "HIBERNATE",
+
+    # Frontend
+    "REACT", "REACT NATIVE", "ANGULAR", "VUEJS", "VUE.JS", "TYPESCRIPT",
+    "JAVASCRIPT", "HTML", "CSS",
+
+    # Bases de données
+    "SQL", "POSTGRESQL", "MYSQL", "MARIADB", "ORACLE",
+    "MONGODB", "NOSQL", "REDIS", "ELASTICSEARCH",
+
+    # DevOps / Cloud
+    "DOCKER", "KUBERNETES", "K8S", "JENKINS", "GITLAB CI", "CI/CD",
+    "GIT", "GITHUB", "GITLAB", "AZURE", "AWS", "GCP",
+    "MINIO", "RABBITMQ", "KAFKA", "KEYCLOAK",
+
+    # Data / ML / IA
+    "PYTHON", "NLP", "MACHINE LEARNING", "DEEP LEARNING",
+    "TENSORFLOW", "PYTORCH", "KERAS", "SCIKIT-LEARN",
+    "MLFLOW",
+
+    # RAG / LLM
+    "RAG", "LLM", "LANGCHAIN", "OLLAMA",
+    "HUGGINGFACE", "TRANSFORMERS", "BERT", "LLAMA", "MISTRAL",
+    "QDRANT", "CHROMADB", "VECTOR DB", "EMBEDDINGS",
+
+    # BI / Analytics
+    "TABLEAU", "POWER BI", "EXCEL",
+
+    # Méthodo / Modélisation
+    "SCRUM", "AGILE", "DEVOPS", "UML", "MERISE"
 ]
+
 
 # ==============================================================================
 # 1. EXTRACTION & NETTOYAGE
@@ -140,6 +169,123 @@ def get_embedding(model, text_list):
     """Vectorise une liste de textes."""
     # Troncature implicite gérée par SentenceTransformer (souvent 384 tokens)
     return model.encode(text_list, convert_to_tensor=True)
+
+# ======================================================================
+# 4. OUTILS POUR LES RECOMMANDATIONS CANDIDAT
+# ======================================================================
+
+def extract_skills_from_text(text: str):
+    """
+    Extrait les compétences à partir d'un texte libre (CV ou JD).
+    """
+    cleaned = clean_text(text)
+    return extract_competences(cleaned)
+
+def compute_semantic_similarity(model, text1: str, text2: str) -> float:
+    """
+    Similarité sémantique simple entre deux textes (0–1).
+    """
+    emb = get_embedding(model, [clean_text(text1), clean_text(text2)])
+    v1, v2 = emb[0], emb[1]
+    v1_np = v1.cpu().numpy().reshape(1, -1)
+    v2_np = v2.cpu().numpy().reshape(1, -1)
+    return float(cosine_similarity(v1_np, v2_np)[0][0])
+
+def generate_experience_advice(cv_text: str, jd_text: str) -> str:
+    """
+    Petit message d'explication sur l'expérience.
+    """
+    cv_xp = extract_experience_level(cv_text)
+    jd_xp = extract_experience_level(jd_text)
+
+    if cv_xp >= jd_xp:
+        return (
+            "Votre niveau d'expérience semble aligné avec le poste. "
+            "Mettez bien en avant vos missions les plus pertinentes dans votre CV."
+        )
+    elif jd_xp - cv_xp <= 2:
+        return (
+            "Le poste demande un peu plus d'expérience que votre profil actuel. "
+            "Soulignez vos projets académiques, stages et réalisations concrètes."
+        )
+    else:
+        return (
+            "Le poste semble viser un profil plus expérimenté. "
+            "Ciblez plutôt des offres 'Junior' ou 'Stage' et enrichissez votre CV "
+            "avec des projets, contributions open-source ou certifications."
+        )
+def compare_tech_stacks(cv_skills, jd_skills):
+    """
+    Compare les stacks techniques CV vs Offre.
+    Retourne :
+      - common: compétences communes (forces)
+      - missing: compétences demandées mais absentes du CV
+      - extra: compétences du CV non demandées dans l'offre
+    """
+    cv_set = set(cv_skills or [])
+    jd_set = set(jd_skills or [])
+
+    common = sorted(cv_set & jd_set)
+    missing = sorted(jd_set - cv_set)
+    extra = sorted(cv_set - jd_set)
+
+    return common, missing, extra
+
+
+def build_skills_advice(common, missing, extra, score: float) -> str:
+    """
+    Construit un texte de recommandation technique lisible par le candidat.
+    Personnalisé selon :
+      - les compétences en commun
+      - les compétences manquantes
+      - les compétences "bonus" du CV
+      - le score global de matching
+    """
+    parts = []
+
+    # 0) Intro selon le score
+    if score >= 75:
+        parts.append("🎯 Très bon alignement technique pour ce poste.")
+    elif score >= 50:
+        parts.append("👍 Bon début de correspondance technique, avec quelques points à renforcer.")
+    else:
+        parts.append("⚠️ Match technique partiel : plusieurs compétences clés de l’offre ne sont pas encore visibles dans votre CV.")
+
+    # 1) Points forts (compétences en commun)
+    if common:
+        parts.append(
+            "✅ Points forts techniques pour ce poste : "
+            + ", ".join(common[:6])
+            + "."
+        )
+
+    # 2) Compétences à apprendre / rendre visibles
+    if missing:
+        parts.append(
+            "📌 Pour augmenter votre score, il serait utile de vous former "
+            "et/ou de mettre davantage en avant dans votre CV : "
+            + ", ".join(missing[:6])
+            + "."
+        )
+
+    # 3) Compétences bonus (non demandées mais potentiellement utiles)
+    if extra:
+        parts.append(
+            "💡 Compétences supplémentaires présentes dans votre CV "
+            "qui peuvent être un plus selon le contexte de l’entreprise : "
+            + ", ".join(extra[:6])
+            + "."
+        )
+
+    # Cas extrême : aucune info exploitable
+    if not parts:
+        return (
+            "Nous n'avons pas pu analyser en détail les compétences techniques "
+            "pour cette offre, probablement parce qu'elle est très courte ou générique."
+        )
+
+    return " ".join(parts)
+
 
 def calculate_hybrid_score(cv_vector, jd_vector, cv_skills, jd_text):
     """

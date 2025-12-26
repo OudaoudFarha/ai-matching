@@ -6,6 +6,16 @@ import uvicorn
 import core_nlp 
 from sentence_transformers import SentenceTransformer
 
+from fastapi import HTTPException, UploadFile, File, Form, Depends
+from fastapi import FastAPI
+from prometheus_fastapi_instrumentator import Instrumentator
+# ...
+from sentence_transformers import SentenceTransformer
+@app.on_event("startup")
+async def _startup():
+    Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+
+
 app = FastAPI(
     title="API Job Matching AI",
     description="Backend pour le projet S5: Matching CV et Offres",
@@ -153,6 +163,78 @@ async def analyze_recruiter(
 
     results.sort(key=lambda x: x["score"], reverse=True)
     return results
+
+
+@app.post("/recommend-candidate")
+async def recommend_candidate(
+    job_description: str = Form(...),
+    cv_file: UploadFile = File(...),
+    model: SentenceTransformer = Depends(get_model)
+):
+    # 1) Lire le CV (PDF / DOCX)
+    content = await cv_file.read()
+    filename = (cv_file.filename or "").lower()
+
+    if filename.endswith(".pdf"):
+        cv_text = core_nlp.extract_text_from_pdf(content)
+    elif filename.endswith(".docx"):
+        cv_text = core_nlp.extract_text_from_docx(content)
+    else:
+        raise HTTPException(status_code=400, detail="Format invalide. PDF ou DOCX uniquement.")
+
+    if not cv_text.strip():
+        raise HTTPException(status_code=400, detail="Impossible d'extraire le texte du CV.")
+
+    # 2) Analyse métadonnées CV (même logique que /analyze-candidate)
+    meta_cv = core_nlp.analyze_cv_metadata(cv_text)
+
+    # Texte contexte identique à /analyze-candidate
+    context_text = f"{meta_cv['competences_str']} {meta_cv['experience_bloc']} {meta_cv['text_nettoye']}"
+    cv_vector = core_nlp.get_embedding(model, [context_text])[0]
+
+    jd_clean = core_nlp.clean_text(job_description)
+    jd_vector = core_nlp.get_embedding(model, [jd_clean])[0]
+
+    # 3) SCORE HYBRIDE = même fonction que le matching
+    score = core_nlp.calculate_hybrid_score(
+        cv_vector,
+        jd_vector,
+        meta_cv["competences_cles"],
+        jd_clean
+    )
+    score = float(score)
+        # 4) Compétences requises par l’offre & comparaison avec le CV
+    jd_skills = core_nlp.extract_competences(jd_clean)
+    cv_skills = meta_cv["competences_cles"]
+
+    common_skills, missing_skills, extra_skills = core_nlp.compare_tech_stacks(
+        cv_skills, jd_skills
+    )
+
+    # 5) Message sur l'expérience (fonction déjà ajoutée dans core_nlp)
+    experience_advice = core_nlp.generate_experience_advice(cv_text, job_description)
+
+    # 6) Conseil technique (stack) pour le candidat
+    
+    skills_advice = core_nlp.build_skills_advice(
+    common_skills,
+    missing_skills,
+    extra_skills,
+    score
+)
+
+    return {
+        "score": score,                             # ≈ même valeur que le score de matching
+        "commonSkills": common_skills,              # compétences en commun CV ↔ Offre
+        "missingSkills": missing_skills,            # compétences à apprendre / ajouter
+        "extraSkills": extra_skills,                # compétences du CV non demandées
+        "suggestedKeywords": missing_skills[:8],    # mots-clés à intégrer dans le CV
+        "experienceAdvice": experience_advice,
+        "skillsAdvice": skills_advice               # petit texte de recommandation technique
+    }
+
+
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)

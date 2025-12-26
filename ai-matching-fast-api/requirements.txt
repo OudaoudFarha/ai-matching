@@ -9,4 +9,4 @@ numpy
 scikit-learn
 torch
 pymupdf
-
+PyPDF2
