@@ -14,7 +14,7 @@ spring:
 
 app:
   minio:
-    url: http://localhost:9000
+    url: http://localhost:9002
     accessKey: minio
     secretKey: minio123
     bucket: resumes
