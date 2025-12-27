@@ -15,29 +15,31 @@ pipeline {
             }
         }
 
-        stage('Backend - Build & Tests & Sonar') {
+       stage('Backend - Build & Tests & Sonar') {
             agent {
                 docker {
-                    image 'maven:3.9-eclipse-temurin-21'
-                      args '--network dev-net'
-                    // Jenkins monte automatiquement le workspace dans le conteneur
+                image 'maven:3.9-eclipse-temurin-21'
+            //  remplace <TON_NETWORK> par le vrai nom, ex: ai-matching-ibtissam_dev-net
+                args '--network <TON_NETWORK>'
                 }
-            }
+    }
             environment {
-        // tu peux garder ça global si tu préfères
-                 SONAR_HOST_URL = 'http://sonarqube:9000'
-            }
+                SONAR_HOST_URL = 'http://sonarqube:9000'
+                SONAR_LOGIN    = credentials('sonar-token')
+                }
+
             steps {
                 dir('backend/resume-service') {
-                  sh """
-                 mvn clean verify sonar:sonar \
-                 -DskipTests \
-                 -Dsonar.host.url=${SONAR_HOST_URL} \
-                -Dsonar.login=${SONAR_LOGIN}
-                     """
-}
-
+                sh """
+                  mvn clean verify sonar:sonar \
+                  -DskipTests \
+                  -Dsonar.host.url=${SONAR_HOST_URL} \
+                  -Dsonar.login=${SONAR_LOGIN}
+            """
+                }
             }
+          }
+
         }
 
         stage('FastAPI - Tests') {
