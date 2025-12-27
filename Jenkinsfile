@@ -19,8 +19,13 @@ pipeline {
             agent {
                 docker {
                     image 'maven:3.9-eclipse-temurin-21'
+                      args '--network dev-net'
                     // Jenkins monte automatiquement le workspace dans le conteneur
                 }
+            }
+            environment {
+        // tu peux garder ça global si tu préfères
+                 SONAR_HOST_URL = 'http://sonarqube:9000'
             }
             steps {
                 dir('backend/resume-service') {
