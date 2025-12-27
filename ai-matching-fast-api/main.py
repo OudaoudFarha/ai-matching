@@ -11,9 +11,6 @@ from fastapi import FastAPI
 from prometheus_fastapi_instrumentator import Instrumentator
 # ...
 from sentence_transformers import SentenceTransformer
-@app.on_event("startup")
-async def _startup():
-    Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
 
 app = FastAPI(
@@ -21,6 +18,9 @@ app = FastAPI(
     description="Backend pour le projet S5: Matching CV et Offres",
     version="2.0.0"
 )
+@app.on_event("startup")
+async def _startup():
+    Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
 # Stockage global du modèle
 ml_models = {}

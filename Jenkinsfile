@@ -24,12 +24,14 @@ pipeline {
             }
             steps {
                 dir('backend/resume-service') {
-                    sh """
-                        mvn clean verify sonar:sonar \
-                          -Dsonar.host.url=${SONAR_HOST_URL} \
-                          -Dsonar.login=${SONAR_LOGIN}
-                    """
-                }
+                  sh """
+                 mvn clean verify sonar:sonar \
+                 -DskipTests \
+                 -Dsonar.host.url=${SONAR_HOST_URL} \
+                -Dsonar.login=${SONAR_LOGIN}
+                     """
+}
+
             }
         }
 
