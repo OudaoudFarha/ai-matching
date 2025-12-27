@@ -1,5 +1,5 @@
 pipeline {
-    // On ne met pas d'agent global, on choisit un agent par stage
+    // Pas d'agent global, on choisit un agent par stage
     agent none
 
     environment {
@@ -15,32 +15,25 @@ pipeline {
             }
         }
 
-       stage('Backend - Build & Tests & Sonar') {
+        stage('Backend - Build & Tests & Sonar') {
             agent {
                 docker {
-                image 'maven:3.9-eclipse-temurin-21'
-            //  remplace <TON_NETWORK> par le vrai nom, ex: ai-matching-ibtissam_dev-net
-                args '--network <TON_NETWORK>'
-                }
-    }
-            environment {
-                SONAR_HOST_URL = 'http://sonarqube:9000'
-                SONAR_LOGIN    = credentials('sonar-token')
-                }
-
-            steps {
-                dir('backend/resume-service') {
-                sh """
-                  mvn clean verify sonar:sonar \
-                  -DskipTests \
-                  -Dsonar.host.url=${SONAR_HOST_URL} \
-                  -Dsonar.login=${SONAR_LOGIN}
-            """
+                    image 'maven:3.9-eclipse-temurin-21'
+                    // utiliser le réseau Docker déclaré dans tools-docker-compose.yml
+                    args '--network dev-net'
                 }
             }
-          }
-
-        
+            steps {
+                dir('backend/resume-service') {
+                    sh """
+                        mvn clean verify sonar:sonar \
+                          -DskipTests \
+                          -Dsonar.host.url=${SONAR_HOST_URL} \
+                          -Dsonar.login=${SONAR_LOGIN}
+                    """
+                }
+            }
+        }
 
         stage('FastAPI - Tests') {
             agent {
