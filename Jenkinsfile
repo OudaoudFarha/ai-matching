@@ -40,7 +40,7 @@ pipeline {
             }
           }
 
-        }
+        
 
         stage('FastAPI - Tests') {
             agent {
