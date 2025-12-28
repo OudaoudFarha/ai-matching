@@ -59,7 +59,7 @@ pipeline {
                 }
             }
             steps {
-                dir('frontend') {
+                dir('frontend/resume-ui') {
                     sh '''
                         npm install
                         npm run build
