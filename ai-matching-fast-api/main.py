@@ -18,21 +18,21 @@ app = FastAPI(
     description="Backend pour le projet S5: Matching CV et Offres",
     version="2.0.0"
 )
-@app.on_event("startup")
-async def _startup():
-    Instrumentator().instrument(app).expose(app, endpoint="/metrics")
-
 # Stockage global du modèle
 ml_models = {}
 
-@app.on_event("startup")
-async def startup_event():
-    ml_models["model"] = core_nlp.load_model()
 
 def get_model():
     if "model" not in ml_models:
         raise HTTPException(status_code=503, detail="Modèle non chargé")
     return ml_models["model"]
+
+
+@app.on_event("startup")
+async def startup_event():
+    ml_models["model"] = core_nlp.load_model()
+# 4) Instrumentation Prometheus – à faire hors startup
+Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
 # --- MODÈLES DE DONNÉES (Pydantic) ---
 
@@ -237,4 +237,4 @@ async def recommend_candidate(
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)

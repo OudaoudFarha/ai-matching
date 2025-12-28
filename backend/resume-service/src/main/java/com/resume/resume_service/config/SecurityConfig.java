@@ -61,6 +61,10 @@ public class SecurityConfig {
 
                         .requestMatchers("/api/match/**")
                         .hasAnyRole("CANDIDATE", "RECRUITER")
+                        // >>> autoriser actuator + prometheus <<<
+                        .requestMatchers("/actuator/health", "/actuator/prometheus").permitAll()
+                        // ou plus large :
+                        // .requestMatchers("/actuator/**").permitAll()
 
                         .anyRequest().authenticated()
                 )

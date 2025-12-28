@@ -10,7 +10,10 @@ spring:
     hibernate:
       ddl-auto: update
     properties:
-      hibernate.jdbc.lob.non_contextual_creation: true
+      hibernate:
+        jdbc:
+          lob:
+            non_contextual_creation: true
 
 app:
   minio:
@@ -18,8 +21,9 @@ app:
     accessKey: minio
     secretKey: minio123
     bucket: resumes
+
 nlp:
-      base-url: http://localhost:8000
+  base-url: http://localhost:8000
 
 management:
   endpoints:
@@ -29,3 +33,7 @@ management:
   endpoint:
     prometheus:
       enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true

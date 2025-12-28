@@ -1,13 +1,13 @@
 global:
-  scrape_interval: 15s
+  scrape_interval: 5s
 
 scrape_configs:
-  - job_name: 'resume-service'
-    metrics_path: '/actuator/prometheus'
+  - job_name: "ai-matching-fastapi"
+    metrics_path: "/metrics"
     static_configs:
-      - targets: ['resume-service:8080']
+      - targets: ["host.docker.internal:8000"]
 
-  - job_name: 'ai-matching-fastapi'
-    metrics_path: '/metrics'
+  - job_name: "resume-service"
+    metrics_path: "/actuator/prometheus"
     static_configs:
-      - targets: ['ai-matching-fast-api:8000']
+      - targets: ["host.docker.internal:8080"]
