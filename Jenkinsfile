@@ -1,10 +1,9 @@
 pipeline {
-    // Pas d'agent global, on choisit un agent par stage
     agent none
 
     environment {
+        // On garde l'URL, mais le token sera géré par Jenkins
         SONAR_HOST_URL = 'http://sonarqube:9000'
-        SONAR_LOGIN    = credentials('sonar-token')  // déjà créé dans Jenkins
     }
 
     stages {
@@ -15,21 +14,17 @@ pipeline {
             }
         }
 
-        stage('Backend - Build & Tests & Sonar') {
+        stage('Backend - Build') {
             agent {
                 docker {
                     image 'maven:3.9-eclipse-temurin-21'
-                    // utiliser le réseau Docker déclaré dans tools-docker-compose.yml
                     args '--network dev-net'
                 }
             }
             steps {
                 dir('backend/resume-service') {
                     sh """
-                        mvn clean verify sonar:sonar \
-                          -DskipTests \
-                          -Dsonar.host.url=${SONAR_HOST_URL} \
-                          -Dsonar.login=${SONAR_LOGIN}
+                        mvn clean verify -DskipTests
                     """
                 }
             }
@@ -68,8 +63,34 @@ pipeline {
             }
         }
 
+        stage('SonarQube Analysis') {
+            agent {
+                docker {
+                    image 'maven:3.9-eclipse-temurin-21'
+                    args '--network dev-net'
+                }
+            }
+            steps {
+                // scannerName doit être le même que dans "Global Tool Configuration"
+                withSonarQubeEnv('sonarqube') {
+                    script {
+                        def scannerHome = tool 'sonar-scanner'
+                        dir('backend/resume-service') {
+                            sh """
+                                ${scannerHome}/bin/sonar-scanner \
+                                  -Dsonar.projectKey=resume-service \
+                                  -Dsonar.projectName=resume-service \
+                                  -Dsonar.sources=src/main/java \
+                                  -Dsonar.java.binaries=target/classes \
+                                  -Dsonar.host.url=${SONAR_HOST_URL}
+                            """
+                        }
+                    }
+                }
+            }
+        }
+
         stage('Build Docker Images') {
-            // Ici on peut réutiliser l’agent Jenkins classique (qui a accès au daemon Docker)
             agent any
             steps {
                 sh '''
