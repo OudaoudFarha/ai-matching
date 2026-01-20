@@ -39,7 +39,7 @@ jobs:
         run: mvn -B clean package -DskipTests
 
 
-      # ----------------------------
+      # -----------------------
       # 2) FRONTEND (Node)
       # IMPORTANT: ton vrai frontend est dans frontend/resume-ui
       # ----------------------------
