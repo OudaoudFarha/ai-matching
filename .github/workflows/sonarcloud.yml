@@ -82,7 +82,7 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           args: >
-            -Dsonar.organization=farha2002
+            -Dsonar.organization=oudaoudfarha
             -Dsonar.projectKey=OudaoudFarha_ai-matching
             -Dsonar.sources=backend/resume-service/src,ai-matching-fast-api,frontend/resume-ui/src
             -Dsonar.exclusions=**/node_modules/**,**/target/**,**/.venv/**,**/__pycache__/**,**/dist/**,**/build/**
