@@ -1,5 +1,4 @@
 name: SonarCloud (fin prove)
-
 on:
   push:
     branches: [ "fin" ]
