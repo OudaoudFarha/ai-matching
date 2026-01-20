@@ -57,9 +57,9 @@ jobs:
             npm run build || true
 
 
-      # ----------------------------
+      # ---------------------------
       # 3) FASTAPI (Python) - optionnel
-      # ----------------------------
+      # -------------------------
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
