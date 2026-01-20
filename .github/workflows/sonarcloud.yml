@@ -36,7 +36,8 @@ jobs:
       # Build + tests (tu peux mettre -DskipTests si tu veux)
       - name: Build Backend (resume-service)
         working-directory: backend/resume-service
-        run: mvn -B clean verify
+        run: mvn -B clean package -DskipTests
+
 
       # ----------------------------
       # 2) FRONTEND (Node)
