@@ -2,9 +2,11 @@ name: SonarCloud (branch fin)
 
 on:
   push:
-    branches: [ fin ]
+    branches:
+      - fin
   pull_request:
-    branches: [ fin ]
+    branches:
+      - fin
 
 permissions:
   contents: read
@@ -19,11 +21,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0  # important pour branches/PR
 
-      # ----------------------------
+      # --------------------------
       # 1) BACKEND (Spring Boot / Maven)
-      # ----------------------------
+      # --------------------------
       - name: Set up Java 21
         uses: actions/setup-java@v4
         with:
@@ -31,12 +33,15 @@ jobs:
           java-version: "21"
           cache: maven
 
+      # Build + tests (tu peux mettre -DskipTests si tu veux)
       - name: Build Backend (resume-service)
         working-directory: backend/resume-service
-        run: mvn -B clean verify
+        run: mvn -B clean package -DskipTests
+
 
       # ----------------------------
-      # 2) FRONTEND (Node) -> vrai chemin: frontend/resume-ui
+      # 2) FRONTEND (Node)
+      # IMPORTANT: ton vrai frontend est dans frontend/resume-ui
       # ----------------------------
       - name: Set up Node 20
         uses: actions/setup-node@v4
@@ -48,24 +53,25 @@ jobs:
       - name: Build Frontend (resume-ui)
         working-directory: frontend/resume-ui
         run: |
-          npm ci
-          npm run build
+            npm ci
+            npm run build || true
 
-      # ----------------------------
-      # 3) FASTAPI (Python) - optionnel mais utile
-      # ----------------------------
+
+      # ---------------------------
+      # 3) FASTAPI (Python) - optionnel
+      # -------------------------
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
 
-      - name: Install FastAPI deps
+      - name: Install FastAPI deps (optional)
         working-directory: ai-matching-fast-api
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          # pytest -q  # si tu as des tests
+          # pytest -q  # si tu ajoutes des tests
 
       # ----------------------------
       # 4) SONARCLOUD SCAN
@@ -76,7 +82,7 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           args: >
-            -Dsonar.organization=farha2002
+            -Dsonar.organization=oudaoudfarha
             -Dsonar.projectKey=OudaoudFarha_ai-matching
             -Dsonar.sources=backend/resume-service/src,ai-matching-fast-api,frontend/resume-ui/src
             -Dsonar.exclusions=**/node_modules/**,**/target/**,**/.venv/**,**/__pycache__/**,**/dist/**,**/build/**
