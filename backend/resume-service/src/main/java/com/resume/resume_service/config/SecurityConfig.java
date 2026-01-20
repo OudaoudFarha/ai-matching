@@ -64,7 +64,7 @@ public class SecurityConfig {
                         // >>> autoriser actuator + prometheus <<<
                         .requestMatchers("/actuator/health", "/actuator/prometheus").permitAll()
                         // ou plus large :
-                        // .requestMatchers("/actuator/**").permitAll()
+                        .requestMatchers("/actuator/**").permitAll()
 
                         .anyRequest().authenticated()
                 )

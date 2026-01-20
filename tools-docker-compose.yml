@@ -52,6 +52,8 @@ services:
       - "9090:9090"
     networks:
       - dev-net
+    extra_hosts:
+        - "host.docker.internal:host-gateway"
 
   # ---------------- GRAFANA ----------------
   grafana:
