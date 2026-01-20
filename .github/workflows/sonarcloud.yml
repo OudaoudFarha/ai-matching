@@ -26,13 +26,10 @@ jobs:
           java-version: "21"
           cache: maven
 
-      - name: Build Backend (resume-service)
-        working-directory: backend/resume-service
-        run: mvn -B -DskipTests clean package
-        
       - name: Test Backend + JaCoCo XML
         working-directory: backend/resume-service
-        run: mvn -B clean test
+        run: mvn -B -Dspring.profiles.active=test clean verify
+
 
 
       - name: Set up Node 20
@@ -88,3 +85,7 @@ jobs:
             -Dsonar.sources=backend/resume-service/src,ai-matching-fast-api,frontend/resume-ui/src
             -Dsonar.exclusions=**/node_modules/**,**/target/**,**/.venv/**,**/__pycache__/**,**/dist/**,**/build/**
             -Dsonar.java.binaries=backend/resume-service/target/classes
+            -Dsonar.coverage.jacoco.xmlReportPaths=backend/resume-service/target/site/jacoco/jacoco.xml
+            -Dsonar.javascript.lcov.reportPaths=frontend/resume-ui/coverage/lcov.info
+            -Dsonar.python.coverage.reportPaths=ai-matching-fast-api/coverage.xml
+
