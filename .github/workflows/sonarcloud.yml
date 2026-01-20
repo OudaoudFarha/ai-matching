@@ -1,12 +1,10 @@
-name: SonarCloud (branch fin)
+name: SonarCloud (fin prove)
 
 on:
   push:
-    branches:
-      - fin
+    branches: [ "fin" ]
   pull_request:
-    branches:
-      - fin
+    branches: [ "fin" ]
 
 permissions:
   contents: read
@@ -14,18 +12,14 @@ permissions:
 
 jobs:
   sonarcloud:
-    name: Build + SonarCloud Scan
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # important pour branches/PR
+          fetch-depth: 0
 
-      # ------------------------
-      # 1) BACKEND (Spring Boot / Maven)
-      # --------------------------
       - name: Set up Java 21
         uses: actions/setup-java@v4
         with:
@@ -33,49 +27,37 @@ jobs:
           java-version: "21"
           cache: maven
 
-      # Build + tests (tu peux mettre -DskipTests si tu veux)
       - name: Build Backend (resume-service)
         working-directory: backend/resume-service
-        run: mvn -B clean package -DskipTests
+        run: mvn -B -DskipTests clean package
 
-
-      # -----------------------
-      # 2) FRONTEND (Node)
-      # IMPORTANT: ton vrai frontend est dans frontend/resume-ui
-      # -------------------------
       - name: Set up Node 20
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: npm
-          cache-dependency-path: frontend/resume-ui/package-lock.json
 
-      - name: Build Frontend (resume-ui)
+      - name: Install Frontend deps
         working-directory: frontend/resume-ui
-        run: |
-            npm ci
-            npm run build || true
+        run: npm ci
 
+      # option: ne bloque pas le workflow si ton TS build casse
+      - name: Build Frontend (optional)
+        working-directory: frontend/resume-ui
+        run: npm run build
+        continue-on-error: true
 
-      # ---------------------------
-      # 3) FASTAPI (Python) - optionnel
-      # -------------------------
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: pip
 
       - name: Install FastAPI deps (optional)
         working-directory: ai-matching-fast-api
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          # pytest -q  # si tu ajoutes des tests
+        continue-on-error: true
 
-      # ----------------------------
-      # 4) SONARCLOUD SCAN
-      # ----------------------------
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v3
         env:
@@ -87,4 +69,3 @@ jobs:
             -Dsonar.sources=backend/resume-service/src,ai-matching-fast-api,frontend/resume-ui/src
             -Dsonar.exclusions=**/node_modules/**,**/target/**,**/.venv/**,**/__pycache__/**,**/dist/**,**/build/**
             -Dsonar.java.binaries=backend/resume-service/target/classes
-            -Dsonar.branch.name=fin
