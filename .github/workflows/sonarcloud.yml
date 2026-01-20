@@ -42,7 +42,7 @@ jobs:
       # -----------------------
       # 2) FRONTEND (Node)
       # IMPORTANT: ton vrai frontend est dans frontend/resume-ui
-      # ----------------------------
+      # -------------------------
       - name: Set up Node 20
         uses: actions/setup-node@v4
         with:
