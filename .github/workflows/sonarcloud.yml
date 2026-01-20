@@ -2,11 +2,9 @@ name: SonarCloud (branch fin)
 
 on:
   push:
-    branches:
-      - fin
+    branches: [ fin ]
   pull_request:
-    branches:
-      - fin
+    branches: [ fin ]
 
 permissions:
   contents: read
@@ -21,7 +19,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # important pour branches/PR
+          fetch-depth: 0
 
       # ----------------------------
       # 1) BACKEND (Spring Boot / Maven)
@@ -33,14 +31,12 @@ jobs:
           java-version: "21"
           cache: maven
 
-      # Build + tests (tu peux mettre -DskipTests si tu veux)
       - name: Build Backend (resume-service)
         working-directory: backend/resume-service
         run: mvn -B clean verify
 
       # ----------------------------
-      # 2) FRONTEND (Node)
-      # IMPORTANT: ton vrai frontend est dans frontend/resume-ui
+      # 2) FRONTEND (Node) -> vrai chemin: frontend/resume-ui
       # ----------------------------
       - name: Set up Node 20
         uses: actions/setup-node@v4
@@ -56,7 +52,7 @@ jobs:
           npm run build
 
       # ----------------------------
-      # 3) FASTAPI (Python) - optionnel
+      # 3) FASTAPI (Python) - optionnel mais utile
       # ----------------------------
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
@@ -64,12 +60,12 @@ jobs:
           python-version: "3.11"
           cache: pip
 
-      - name: Install FastAPI deps (optional)
+      - name: Install FastAPI deps
         working-directory: ai-matching-fast-api
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          # pytest -q  # si tu ajoutes des tests
+          # pytest -q  # si tu as des tests
 
       # ----------------------------
       # 4) SONARCLOUD SCAN
