@@ -10,3 +10,7 @@ scikit-learn
 torch
 pymupdf
 PyPDF2
+httpx
+pytest
+pytest-cov
+

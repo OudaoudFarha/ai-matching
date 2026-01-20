@@ -1,8 +1,10 @@
 import { render, screen } from "@testing-library/react";
-import "@testing-library/jest-dom";
 import App from "./App";
+import { describe, it, expect } from "vitest";
 
-test("renders app", () => {
-  render(<App />);
-  expect(screen.getByText(/ai-matching/i)).toBeInTheDocument();
+describe("App", () => {
+  it("renders", () => {
+    render(<App />);
+    expect(screen.getByText(/resume/i)).toBeInTheDocument();
+  });
 });

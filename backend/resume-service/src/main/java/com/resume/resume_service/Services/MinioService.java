@@ -8,9 +8,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import io.minio.RemoveObjectArgs;
+import org.springframework.context.annotation.Profile;
+import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
+@Profile("!test")
 public class MinioService {
 
     private final MinioClient minioClient;
