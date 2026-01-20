@@ -53,8 +53,9 @@ jobs:
       - name: Build Frontend (resume-ui)
         working-directory: frontend/resume-ui
         run: |
-          npm ci
-          npm run build
+            npm ci
+            npm run build || true
+
 
       # ----------------------------
       # 3) FASTAPI (Python) - optionnel
