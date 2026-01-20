@@ -23,7 +23,7 @@ jobs:
         with:
           fetch-depth: 0  # important pour branches/PR
 
-      # --------------------------
+      # ------------------------
       # 1) BACKEND (Spring Boot / Maven)
       # --------------------------
       - name: Set up Java 21
