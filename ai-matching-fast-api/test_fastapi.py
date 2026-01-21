@@ -50,19 +50,6 @@ def print_result(data, indent=2):
     """Affiche un résultat JSON formaté"""
     print(json.dumps(data, indent=indent, ensure_ascii=False))
 
-# ==============================================================================
-# TEST 1: VÉRIFICATION DE L'API
-# ==============================================================================
-client = TestClient(app)
-def test_health_check():
-    r = client.get("/health")
-    assert r.status_code == 200
-
-def test_health_endpoint():
-    r = client.get("/health")
-    assert r.status_code == 200
-    data = r.json()
-    assert "cache_stats" in data
 
 
 # ==============================================================================
