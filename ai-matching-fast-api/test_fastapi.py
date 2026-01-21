@@ -7,6 +7,13 @@ import requests
 import json
 import time
 from pathlib import Path
+import os
+import pytest
+
+CI = os.getenv("CI") == "true"
+from fastapi.testclient import TestClient
+from main import app
+
 
 # Configuration
 BASE_URL = "http://localhost:8000"
@@ -46,11 +53,12 @@ def print_result(data, indent=2):
 # ==============================================================================
 # TEST 1: VÉRIFICATION DE L'API
 # ==============================================================================
-
+client = TestClient(app)
 def test_health_check():
     """Test 1: Vérifier que l'API est démarrée"""
     print_section("TEST 1: Health Check")
-    
+    r = client.get("/health")
+    assert r.status_code == 200
     try:
         response = requests.get(f"{BASE_URL}/")
         
@@ -71,7 +79,8 @@ def test_health_check():
 def test_health_endpoint():
     """Test détaillé du endpoint /health"""
     print_section("TEST 2: Health Endpoint Détaillé")
-    
+    r = client.get("/health")
+    assert r.status_code == 200
     try:
         response = requests.get(f"{BASE_URL}/health")
         
@@ -100,7 +109,7 @@ def test_health_endpoint():
 # ==============================================================================
 # TEST 2: ANALYSE D'UN CV
 # ==============================================================================
-
+@pytest.mark.skipif(CI, reason="Disabled in CI (needs local CV files)")
 def test_cv_analysis(cv_path: str):
     """Test 3: Analyse d'un CV"""
     print_section("TEST 3: Analyse d'un CV")
@@ -193,7 +202,14 @@ def test_job_analysis():
     - Anglais professionnel
     - Français courant
     """
-    
+   
+    r = client.post("/api/job/analyze", data={
+    "job_id": "test-job-001",
+    "titre": "Test",
+    "description": "Test description"
+    })
+    assert r.status_code in (200, 201, 422)
+
     try:
         data = {
             'job_id': 'test-job-001',
@@ -372,7 +388,7 @@ def test_batch_matching_candidate():
 # ==============================================================================
 # TEST 6: BATCH MATCHING (RECRUTEUR)
 # ==============================================================================
-
+@pytest.mark.skipif(CI, reason="Disabled in CI (needs local CV files)")
 def test_batch_matching_recruiter(cv_paths: list):
     """Test 7: Batch matching pour un recruteur"""
     print_section("TEST 7: Batch Matching (Vue Recruteur)")

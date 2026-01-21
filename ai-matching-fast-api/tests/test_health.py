@@ -1,8 +1,7 @@
-from fastapi.testclient import TestClient
-from main import app  # adapte si ton fichier s'appelle autrement
+from fastapi import FastAPI
 
-client = TestClient(app)
+app = FastAPI()
 
-def test_health():
-    r = client.get("/health")
-    assert r.status_code == 200
+@app.get("/health")
+def health():
+    return {"status": "ok"}
