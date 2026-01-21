@@ -261,85 +261,51 @@ def test_matching_calculation():
 # ==============================================================================
 # TEST 5: BATCH MATCHING (CANDIDAT)
 # ==============================================================================
-
 def test_batch_matching_candidate():
     """Test 6: Batch matching pour un candidat"""
     print_section("TEST 6: Batch Matching (Vue Candidat)")
-    
-    # Créer plusieurs job descriptions de test
+
     jobs_to_create = [
         {
-            'job_id': 'test-job-002',
-            'titre': 'Développeur Full Stack',
-            'description': '''
+            "job_id": "test-job-002",
+            "titre": "Développeur Full Stack",
+            "description": """
             Recherche développeur Full Stack avec 3 ans d'expérience.
             Compétences: React, Node.js, PostgreSQL, Docker.
             Formation: Licence ou Master en informatique.
-            '''
+            """,
         },
         {
-            'job_id': 'test-job-003',
-            'titre': 'DevOps Engineer',
-            'description': '''
+            "job_id": "test-job-003",
+            "titre": "DevOps Engineer",
+            "description": """
             DevOps Engineer avec 5+ ans d'expérience.
             Compétences: Kubernetes, Docker, AWS, CI/CD, Python.
             Formation: Master en informatique.
-            '''
-        }
+            """,
+        },
     ]
-    
+
     print_info("Création de 2 offres supplémentaires...")
-    
+
     for job in jobs_to_create:
-        response = client.post("/api/job/analyze", data=job)
-    assert response.status_code in (200, 201, 422)
+        resp = client.post("/api/job/analyze", data=job)
+        assert resp.status_code in (200, 201, 422)
+
+    # ✅ Définir request_data AVANT de l'utiliser
+    request_data = {
+        "cv_id": "test-cv-001",
+        "candidate_id": "test-candidate-001",
+        "job_offer_ids": ["test-job-001", "test-job-002", "test-job-003"],
+    }
 
     response = client.post("/api/matching/batch", json=request_data)
     assert response.status_code in (200, 201, 422)
 
-    # Maintenant faire le batch matching
-    print_info("\n Comparaison du CV contre 3 offres...")
-    
-    try:
-        request_data = {
-            'cv_id': 'test-cv-001',
-            'candidate_id': 'test-candidate-001',
-            'job_offer_ids': ['test-job-001', 'test-job-002', 'test-job-003']
-        }
-        
-        start_time = time.time()
-        response = requests.post(
-            f"{BASE_URL}/api/matching/batch",
-            json=request_data
-        )
-        elapsed_time = time.time() - start_time
-        
-        if response.status_code == 200:
-            result = response.json()
-            print_success(f"Batch matching terminé en {elapsed_time:.2f}s")
-            
-            print(f"\n📊 Résultats ({result['total_jobs_analyzed']} offres):")
-            print(f"{'='*70}")
-            
-            for i, job_result in enumerate(result['results'], 1):
-                scores = job_result['scores']
-                print(f"\n{i}. {job_result['titre']}")
-                print(f"   Score Total: {Colors.BOLD}{scores['score_total']:.1f}%{Colors.END}")
-                print(f"   - Sémantique: {scores['score_semantique']:.1f}%")
-                print(f"   - Compétences: {scores['score_competences']:.1f}%")
-                print(f"   - Expérience: {scores['score_experience']:.1f}%")
-                print(f"   - Formation: {scores['score_formation']:.1f}%")
-                print(f"   Compétences matchées: {len(job_result['competences_matchees'])}")
-            
-            return result
-        else:
-            print_error(f"Erreur (Status: {response.status_code})")
-            print(response.text)
-            return None
-            
-    except Exception as e:
-        print_error(f"Erreur: {str(e)}")
-        return None
+    # Optionnel: vérifier la forme de la réponse si ton endpoint la renvoie
+    if response.status_code == 200:
+        data = response.json()
+        assert "results" in data
 
 # ==============================================================================
 # TEST 6: BATCH MATCHING (RECRUTEUR)
