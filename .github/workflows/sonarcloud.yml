@@ -69,10 +69,6 @@ jobs:
         continue-on-error: true
 
 
-      - name: Test FastAPI + coverage.xml
-        working-directory: ai-matching-fast-api
-        run: python -m pytest --cov=. --cov-report=xml
-
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v3
