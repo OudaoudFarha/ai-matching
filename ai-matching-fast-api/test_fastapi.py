@@ -51,6 +51,7 @@ def print_result(data, indent=2):
     print(json.dumps(data, indent=indent, ensure_ascii=False))
 
 
+client = TestClient(app)
 
 # ==============================================================================
 # TEST 2: ANALYSE D'UN CV
