@@ -13,4 +13,4 @@ PyPDF2
 httpx
 pytest
 pytest-cov
-
+prometheus-fastapi-instrumentator
