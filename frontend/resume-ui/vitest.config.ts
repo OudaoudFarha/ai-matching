@@ -4,8 +4,9 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
-    setupFiles: ['./src/setupTests.ts'],
+    setupFiles: ['./setupTests.ts'], // ou ./src/setupTests.ts selon ton choix
     coverage: {
+      provider: 'v8',
       reporter: ['lcov', 'text'],
     },
   },
